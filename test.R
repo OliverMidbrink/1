@@ -4,8 +4,6 @@ library(monocle3)
 library(ggplot2)
 library(dplyr)
 
-
-
 # a helper function to identify the root principal points:
 get_earliest_principal_node <- function(cds, time_bin="130-170"){
   cell_ids <- which(colData(cds)[, "embryo.time.bin"] == time_bin)
