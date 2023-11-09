@@ -15,7 +15,8 @@ library(pheatmap)
 
 print(getwd())
 
-setwd('/Users/oliver/Documents/Random/RandomScience/1')
+#setwd('/Users/oliver/Documents/Random/RandomScience/1')
+setwd('E:/RandomScience/1')
 
 # Load and process the pre-treatment data
 dataList <- Read10X(data.dir = "./SC3_v3_NextGem_DI_CellPlex_CRISPR_A549_30K_A549_Small_Pool_v2_No_Treatment_count_sample_feature_bc_matrix/sample_feature_bc_matrix/")
@@ -217,8 +218,10 @@ library(SingleCellExperiment)
 library(slingshot)
 library(scran)
 
+#setwd('/Users/oliver/Documents/Random/RandomScience/1')
+setwd('E:/RandomScience/1')
+
 # Step 1: Load data and create a Seurat object
-setwd('/Users/oliver/Documents/Random/RandomScience/1')
 dataList <- Read10X(data.dir = "./SC3_v3_NextGem_DI_CellPlex_CRISPR_A549_30K_A549_Small_Pool_v2_No_Treatment_count_sample_feature_bc_matrix/sample_feature_bc_matrix/")
 names(dataList)
 data <- dataList$"Gene Expression"
@@ -248,6 +251,7 @@ sce_object <- slingshot(sce_object, clusterLabels = "seurat_clusters", reducedDi
 library(tradeSeq)
 sce_object <- fitGAM(counts = counts(sce_object), sds = sce_object, pseudotime = slingPseudotime(sce_object, na = FALSE), cellWeights = slingCurveWeights(sce_object))
 
+sce_object <- fitGAM(sce_object)
 
 
 
