@@ -34,9 +34,9 @@ sce_object <- slingshot(sce_object, clusterLabels = "seurat_clusters", reducedDi
 # It is not part of the Seurat or Slingshot workflow and requires additional context to be properly integrated
 # Assuming you have already installed tradeSeq and have lineages identified, you could proceed
 library(tradeSeq)
-sce_object <- fitGAM(counts = counts(sce_object), sds = sce_object, pseudotime = slingPseudotime(sce_object, na = FALSE), cellWeights = slingCurveWeights(sce_object))
-
 sce_object <- fitGAM(sce_object)
 
+# Assuming 'gam_results' is the result of fitGAM:
+saveRDS(sce_object, file = "./sce_object.rds")
 
 
