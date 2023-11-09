@@ -11,13 +11,18 @@ library(tradeSeq)
 library(uwot)
 library(mclust)
 library(RColorBrewer)
+library(pheatmap)
+
+print(getwd())
+
+setwd('/Users/oliver/Documents/Random/RandomScience/1')
 
 # Load and process the pre-treatment data
-dataList <- Read10X(data.dir = "E:/RandomScience/1/SC3_v3_NextGem_DI_CellPlex_CRISPR_A549_30K_A549_Small_Pool_v2_No_Treatment_count_sample_feature_bc_matrix/sample_feature_bc_matrix/")
+dataList <- Read10X(data.dir = "./SC3_v3_NextGem_DI_CellPlex_CRISPR_A549_30K_A549_Small_Pool_v2_No_Treatment_count_sample_feature_bc_matrix/sample_feature_bc_matrix/")
 names(dataList)
 data <- dataList$"Gene Expression"
 
-data <- CreateSeuratObject(counts = data, project = 'Pre_Treatment2')
+data <- CreateSeuratObject(counts = data, project="Pre_Treatment2")
 data <- NormalizeData(data)
 data <- FindVariableFeatures(data)
 data <- ScaleData(data)
@@ -32,7 +37,7 @@ DimPlot(data, group.by = "RNA_snn_res.1")
 
 dimred <- data@reductions$umap@cell.embeddings
 clustering <- data$RNA_snn_res.1
-counts <- as.matrix(data@assays$RNA@layers$counts)
+counts <- as.matrix(data@assays$RNA@layers)
 
 lineages <- getLineages(data = dimred, clusterLabels = clustering, start.clus = "9")
 lineages
@@ -82,7 +87,7 @@ for (i in levels(clustering)) {
 
 ## NEW CODE
 
-
+counts
 sce <- SingleCellExperiment(assays = List(counts = counts))
 geneFilter <- apply(assays(sce)$counts,1,function(x){
   sum(x >= 3) >= 10
@@ -153,12 +158,96 @@ sce <- fitGAM(sce)
 ATres <- associationTest(sce)
 
 
-topgenes <- rownames(ATres[order(ATres$pvalue), ])[1:250]
+topgenes <- rownames(ATres[order(ATres$pvalue), ])[1:10]
 pst.ord <- order(sce$slingPseudotime_1, na.last = NA)
 heatdata <- assays(sce)$counts[topgenes, pst.ord]
 heatclus <- sce$GMM[pst.ord]
 
+all_genes <- rownames(ATres[order(ATres$pvalue), ])
+
 heatmap(log1p(heatdata), Colv = NA,
         ColSideColors = brewer.pal(9,"Set1")[heatclus])
+
+### based on mean smoother
+yhatSmooth <- predictSmooth(sce, gene = topgenes, nPoints = 10, tidy = FALSE)
+heatSmooth <- pheatmap(t(scale(t(yhatSmooth[, 1:10]))),
+                       cluster_cols = FALSE,
+                       show_rownames = TRUE, 
+                       show_colnames = TRUE)
+
+
+plotSmoothers(sce, assays(sce)$counts, gene = "V46", alpha = 1, border = TRUE) + ggtitle("CDH1")
+
+
+counts <- GetAssayData(data, assay = "RNA", layer = "counts")
+counts
+
+gene_names <- rownames(data)
+
+row.names(rowData(sce))
+rowData(sce)$gene_name <- row.names(data@assays$RNA@features@.Data)
+
+sce_object <- as.SingleCellExperiment(data)
+sce_object
+
+sce_object <- fitGAM(sce_object)
+
+sce_object <- runUMAP(sce_object)
+
+sce_object <- slingshot(sce_object, red, clusterLabels = "seurat_clusters")
+
+
+# Normalize the data if not already normalized
+sce_object <- logNormCounts(sce_object)
+
+# Compute the PCA if not already done
+set.seed(42) # for reproducibility
+sce_object <- runPCA(sce_object, ncomponents = 10)
+
+# Calculate the UMAP coordinates
+sce_object <- runUMAP(sce_object, dimred = "PCA")
+plotReducedDim(sce_object, 'UMAP', colour_by = "seurat_clusters")
+
+colnames(colData(sce_object))
+
+
+
+library(Seurat)
+library(SingleCellExperiment)
+library(slingshot)
+library(scran)
+
+# Step 1: Load data and create a Seurat object
+setwd('/Users/oliver/Documents/Random/RandomScience/1')
+dataList <- Read10X(data.dir = "./SC3_v3_NextGem_DI_CellPlex_CRISPR_A549_30K_A549_Small_Pool_v2_No_Treatment_count_sample_feature_bc_matrix/sample_feature_bc_matrix/")
+names(dataList)
+data <- dataList$"Gene Expression"
+
+seurat_object <- CreateSeuratObject(counts = data, project="Pre_Treatment2")
+
+# Step 2: Normalize and identify clusters using Seurat
+seurat_object <- NormalizeData(seurat_object)
+seurat_object <- FindVariableFeatures(seurat_object)
+seurat_object <- ScaleData(seurat_object)
+seurat_object <- RunPCA(seurat_object, features = VariableFeatures(object = seurat_object))
+seurat_object <- FindNeighbors(seurat_object, dims = 1:20)
+seurat_object <- FindClusters(seurat_object)
+
+# Step 3: Convert to SingleCellExperiment object
+sce_object <- as.SingleCellExperiment(seurat_object)
+
+# Step 4: Run Slingshot
+# Ensure you have a reducedDims entry in your sce_object, here we assume PCA has been stored
+# You might need to set the reducedDims(sce_object) from the Seurat object PCA results
+# Also, make sure `seurat_clusters` is the name of the cluster column in sce_object colData
+sce_object <- slingshot(sce_object, clusterLabels = "seurat_clusters", reducedDim = 'PCA')
+
+# The fitGAM function is part of the tradeSeq package and is used for fitting Generalized Additive Models
+# It is not part of the Seurat or Slingshot workflow and requires additional context to be properly integrated
+# Assuming you have already installed tradeSeq and have lineages identified, you could proceed
+library(tradeSeq)
+sce_object <- fitGAM(counts = counts(sce_object), sds = sce_object, pseudotime = slingPseudotime(sce_object, na = FALSE), cellWeights = slingCurveWeights(sce_object))
+
+
 
 
